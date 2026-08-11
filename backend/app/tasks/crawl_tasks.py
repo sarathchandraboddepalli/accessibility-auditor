@@ -30,6 +30,7 @@ def run_audit_job(job_id: str):
             domain = urlparse(job.url).netloc
             total_violations = 0
             critical_violations = 0
+            page_scores = []
 
             try:
                 while to_visit and len(visited) < job.max_pages:
@@ -47,7 +48,7 @@ def run_audit_job(job_id: str):
                     title = get_page_title(html)
 
                     critical_v = [v for v in violations if v.severity == "critical"]
-                    warning_v = [v for v in violations if v.severity in ("moderate", "minor")]
+                    warning_v = [v for v in violations if v.severity in ("serious", "moderate", "minor")]
 
                     page = AuditPage(
                         job_id=job.id,
@@ -76,6 +77,7 @@ def run_audit_job(job_id: str):
 
                     total_violations += len(violations)
                     critical_violations += len(critical_v)
+                    page_scores.append(score)
 
                     if len(visited) < job.max_pages:
                         links = extract_links(html, url, domain)
@@ -86,6 +88,7 @@ def run_audit_job(job_id: str):
                 job.pages_crawled = len(visited)
                 job.total_violations = total_violations
                 job.critical_violations = critical_violations
+                job.compliance_score = (sum(page_scores) / len(page_scores)) if page_scores else None
                 job.status = "completed"
                 job.completed_at = datetime.now(timezone.utc)
 

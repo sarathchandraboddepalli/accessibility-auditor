@@ -1,11 +1,20 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from datetime import datetime
 from uuid import UUID
+from urllib.parse import urlparse
 
 class JobCreate(BaseModel):
     url: str
     site_name: str | None = None
     max_pages: int = 10
+
+    @field_validator('url')
+    @classmethod
+    def url_must_be_http_or_https(cls, v: str) -> str:
+        parsed = urlparse(v)
+        if parsed.scheme not in ("http", "https"):
+            raise ValueError("URL scheme must be http or https")
+        return v
 
 class JobOut(BaseModel):
     id: UUID

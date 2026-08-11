@@ -1,5 +1,6 @@
-from jinja2 import Template
+import jinja2
 from datetime import datetime
+from fastapi import HTTPException
 
 REPORT_HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -59,14 +60,16 @@ REPORT_HTML_TEMPLATE = """
 """
 
 def generate_html_report(job, pages: list) -> str:
-    template = Template(REPORT_HTML_TEMPLATE)
+    template = jinja2.Environment(autoescape=True).from_string(REPORT_HTML_TEMPLATE)
     return template.render(job=job, pages=pages, report_date=datetime.now().strftime("%d %B %Y"))
 
 def generate_pdf_report(job, pages: list) -> bytes:
     try:
         from weasyprint import HTML
+    except ImportError:
+        raise HTTPException(status_code=503, detail="PDF generation is not available: weasyprint is not installed")
+    try:
         html_content = generate_html_report(job, pages)
         return HTML(string=html_content).write_pdf()
-    except Exception:
-        html_content = generate_html_report(job, pages)
-        return html_content.encode("utf-8")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"PDF generation failed: {e}")

@@ -1,9 +1,37 @@
 import httpx
+import ipaddress
+import socket
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 from typing import Set
 
+_PRIVATE_NETWORKS = [
+    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("172.16.0.0/12"),
+    ipaddress.ip_network("192.168.0.0/16"),
+    ipaddress.ip_network("127.0.0.0/8"),
+    ipaddress.ip_network("169.254.0.0/16"),
+]
+
+def _is_safe_url(url: str) -> bool:
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        return False
+    hostname = parsed.hostname
+    if not hostname:
+        return False
+    try:
+        ip = ipaddress.ip_address(socket.gethostbyname(hostname))
+        for network in _PRIVATE_NETWORKS:
+            if ip in network:
+                return False
+    except Exception:
+        return False
+    return True
+
 async def fetch_html(url: str) -> str | None:
+    if not _is_safe_url(url):
+        return None
     headers = {
         "User-Agent": "GIGW-Accessibility-Auditor/1.0 (Government Compliance Scanner)",
         "Accept": "text/html,application/xhtml+xml",
